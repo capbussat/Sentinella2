@@ -1,0 +1,26 @@
+settings:
+  type: "websockets"
+  ssh_user: "isard"
+  version: "1.0.0"
+  directory:
+    data: "/tmp"
+    binary: "/usr/local/bin"
+    settings: "/etc/sentinella"
+
+buttons:
+  - title: "Comprova"
+    command: "check"
+    style: "success"
+
+  - title: "Restringeix navegadors"
+    command: "browser_policy"
+    style: "warning"
+
+  - title: "Restrict internet"
+    command: "status"
+    style: "warning"
+
+  - title: "Permet tot"
+    command: "allow"
+    style: "success"
+
