@@ -37,7 +37,7 @@ class SentinellaApp(ttk.Window):
         self.geometry("800x400")
         self.main_frame = ttk.Frame(self)
         self.main_frame.pack(fill=BOTH, expand=True, padx=10, pady=10)
-        
+
         ttk.Separator(self.main_frame, orient=HORIZONTAL).pack(fill=X, pady=8)
         self.create_dynamic_buttons()
 
@@ -47,32 +47,25 @@ class SentinellaApp(ttk.Window):
             return
 
         for btn in self.buttons_config:
-
             title = btn.get("title", "Button")
             command = btn.get("command", "")
             style= btn.get("style","PRIMARY")
-
             button = ttk.Button(
                 self.main_frame,
                 text=title,
                 bootstyle=style,
             )
-
             button.config(
                 command=lambda b=button, c=command, t=title:
                     self.run_dynamic_command(b, t, c)
             )
-
             button.pack(side=LEFT, padx=5)
+
     def run_dynamic_command(self, button, title, command):
          with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
              self.hosts = load_hosts_from_file()
-
              for host in self.hosts:
                  executor.submit(send(host.ip,command))
-
-
-
 
     def hosts(self):
        pass

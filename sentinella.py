@@ -15,6 +15,14 @@ import threading
 import time
 import websockets
 from websockets.exceptions import ConnectionClosed
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(threadName)s: %(message)s"
+)
+
+log = logging.getLogger("sentinella")
 
 IFACE = "enp2s0"        # interficie de xarxa a consultar
 STATUS_READ_INTERVAL = 5  # segons entre lectures de la cua
@@ -32,12 +40,14 @@ def execute_command(command, *args):
             capture_output=True, text=True, check=True,
         ).stdout
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        sys.exit(f"No s'ha pogut executar: {e}")
+        stderr = getattr(e, "stderr", "")
+        log.error("Fallada executant %s: %s | stderr=%s", command, e, stderr)
+        return None
     return sortida
 
 def check():
     print ("Aplica check!")
-    sortida = execute_command("ping", "-c", "4", "www.google.com")
+    sortida = execute_command("check.sh")
     return sortida
 
 def browser_policy():
@@ -47,10 +57,13 @@ def browser_policy():
 
 def restrict_internet():
     print ("Aplica restrict_internet!")
+    sortida = execute_command("restrict.sh")
+    return sortida
 
 def allow():
     print ("Aplica allow!")
-    sortida = execute_command("remove-browser-policies.sh")
+    sortida = execute_command("allow.sh")
+    return sortida
 
 # definit després de les funcions
 call_actions = {
@@ -83,7 +96,6 @@ async def handler(websocket):
             data = json.loads(message)
         except json.JSONDecodeError:
             data = json.dumps({"status": "invalid"})
-
         await websocket.send(message)  # eco
 
         if isinstance(data, dict) and "status" in data:
@@ -105,16 +117,20 @@ def start_server(host="0.0.0.0", port=8765):
 def process_loop():
     """Thread que, cada STATUS_READ_INTERVAL segons, treu un element de la cua i n'imprimeix el status."""
     while True:
-        time.sleep(STATUS_READ_INTERVAL)
+        if not t_status.is_alive():
+            log.exception("t_status no és alive.")
         try:
             data = msg_queue.get(block=True, timeout=STATUS_READ_INTERVAL)
             log_time = time.strftime("%Y-%m-%d %H:%M:%S")
             status = data['status']
-            print(f"[status] {log_time} status={status}")
+            log.info(f"[status] {log_time} status={status}")
             # Crida a la funció apropiada
             if status in call_actions:
-                result = call_actions[status]()
-                print(result)
+                try:
+                    result = call_actions[status]()
+                    log.info(result)
+                except e:
+                    log.exception('')
         except queue.Empty:
             # print("Queue is empty")
             pass
@@ -126,13 +142,11 @@ if __name__ == "__main__":
     parser.add_argument("--iface", default=IFACE, help="Interficie de xarxa (per defecte enp2s0)")
     args = parser.parse_args()
     my_ip = detect_own_ip(args.iface)
-
     try:
         t_status = threading.Thread(target=process_loop, args=(), daemon=True)
         t_server = threading.Thread(target=start_server,  args=(), daemon=True)
         t_status.start()
         t_server.start()
         t_server.join()
-
     except KeyboardInterrupt:
         print("\nClient aturat (CTRL+C)")
