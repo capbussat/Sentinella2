@@ -11,10 +11,10 @@ No s'executa, encara, cap de les restriccions des de Sentinella.
 python3 -m venv .venv
 
 ## Inicia l'entorn virtual
-cd ~/Sentinella/sentinella
-source .env/bin/activate
+cd ~/Sentinella/sentinella  
+source .env/bin/activate  
 
 ## Websockets
-pip install websockets
-pip install ttkbootstrap
-pip install PyYAML
+pip install websockets  
+pip install ttkbootstrap  
+pip install PyYAML  
