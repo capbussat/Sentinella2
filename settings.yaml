@@ -17,7 +17,7 @@ buttons:
     style: "warning"
 
   - title: "Restrict internet"
-    command: "status"
+    command: "restrict_internet"
     style: "warning"
 
   - title: "Permet tot"

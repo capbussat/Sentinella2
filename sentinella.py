@@ -6,6 +6,7 @@ Espera missatge del controlador i envia confirmacio.
 import argparse
 import asyncio
 import json
+from os import path
 import queue
 import re
 import subprocess
@@ -17,18 +18,49 @@ from websockets.exceptions import ConnectionClosed
 
 IFACE = "enp2s0"        # interficie de xarxa a consultar
 STATUS_READ_INTERVAL = 5  # segons entre lectures de la cua
+BINARIES="/usr/local/bin"
+SETTINGS="/etc/sentinella"
+DATA="/tmp"
 
 msg_queue = queue.Queue()
 
+def execute_command(command, *args):
+    binari = path.join(BINARIES, command)
+    try:
+        sortida = subprocess.run(
+            [binari, *args],
+            capture_output=True, text=True, check=True,
+        ).stdout
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        sys.exit(f"No s'ha pogut executar: {e}")
+    return sortida
+
 def check():
     print ("Aplica check!")
+    sortida = execute_command("ping", "-c", "4", "www.google.com")
+    return sortida
 
 def browser_policy():
     print ("Aplica broswer_policy!")
+    sortida = execute_command("add-browser-policies.sh")
+    return sortida
+
+def restrict_internet():
+    print ("Aplica restrict_internet!")
+
+def allow():
+    print ("Aplica allow!")
+    sortida = execute_command("remove-browser-policies.sh")
 
 # definit després de les funcions
-call_actions = {"check": check, "browser_policy": browser_policy }
+call_actions = {
+    "check": check,
+    "browser_policy": browser_policy,
+    "allow": allow,
+    "restrict_internet": restrict_internet
+}
 
+# ----------------------------------------------------
 def detect_own_ip(iface: str = IFACE) -> str:
     """Obté la IPv4 de la interfície indicada mitjançant 'ip addr'."""
     try:
@@ -78,10 +110,11 @@ def process_loop():
             data = msg_queue.get(block=True, timeout=STATUS_READ_INTERVAL)
             log_time = time.strftime("%Y-%m-%d %H:%M:%S")
             status = data['status']
-            print(status)
             print(f"[status] {log_time} status={status}")
+            # Crida a la funció apropiada
             if status in call_actions:
-                call_actions[status]()
+                result = call_actions[status]()
+                print(result)
         except queue.Empty:
             # print("Queue is empty")
             pass
